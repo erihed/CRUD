@@ -2,12 +2,14 @@
 #GibHub CRUD
 
 library(shiny)
+library(shinyWidgets)
 library(DBI)
 library(pool)
 library(odbc)
 library(DT)
 library(ggplot2)
 library(dplyr)
+library(plotly)
 
 #Database connection with pool!
 pool <- dbPool(
