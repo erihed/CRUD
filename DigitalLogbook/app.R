@@ -1,19 +1,21 @@
-#Databasen Digital_instrumentloggbok ligger på här: xxx
+#Databasen Digital_instrumentloggbok ligger på här: Mtc07d1.mta.karolinska.se
 #GibHub CRUD
 
 library(shiny)
+library(shinyWidgets)
 library(DBI)
 library(pool)
 library(odbc)
 library(DT)
 library(ggplot2)
 library(dplyr)
+library(plotly)
 
 #Database connection with pool!
 pool <- dbPool(
     drv = odbc::odbc(),
     Driver   = "SQL Server",
-    Server   = xxx,
+    Server   = "mtc07d1.mta.karolinska.se",
     Database = "Digital_instrumentloggbok",
     trusted_connection = TRUE,
     Port     = 1433)
@@ -83,10 +85,6 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
     
-    #Vill slutligen skapa ett table med DT
-    #output$tbl <- DT::renderDataTable({
-    #  pool %>% tbl("MSInstruments")
-    #  })
     output$tbl <- DT::renderDataTable({
         
         outp <- dbGetQuery(pool, "SELECT * from MSInstruments")
