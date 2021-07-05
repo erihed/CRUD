@@ -85,10 +85,6 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
     
-    #Vill slutligen skapa ett table med DT
-    #output$tbl <- DT::renderDataTable({
-    #  pool %>% tbl("MSInstruments")
-    #  })
     output$tbl <- DT::renderDataTable({
         
         outp <- dbGetQuery(pool, "SELECT * from MSInstruments")
