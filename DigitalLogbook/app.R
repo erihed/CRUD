@@ -1,4 +1,4 @@
-#Databasen Digital_instrumentloggbok ligger på här: Mtc07d1.mta.karolinska.se
+#Databasen Digital_instrumentloggbok ligger på här: xxx
 #GibHub CRUD
 
 library(shiny)
@@ -13,7 +13,7 @@ library(dplyr)
 pool <- dbPool(
     drv = odbc::odbc(),
     Driver   = "SQL Server",
-    Server   = "mtc07d1.mta.karolinska.se",
+    Server   = xxx,
     Database = "Digital_instrumentloggbok",
     trusted_connection = TRUE,
     Port     = 1433)
