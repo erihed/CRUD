@@ -37,7 +37,7 @@ ui <- fluidPage(
     sidebarLayout(
         
         # Application title
-        titlePanel("Digital Instrument Loggbook"),
+        titlePanel("Digital Instrument logbook"),
         sidebarPanel(
             dateInput(inputId = "date",
                       label = "Date",
@@ -67,9 +67,17 @@ ui <- fluidPage(
                           label = "Action",
                           value = "Solution"),
             
-            fileInput(inputId = "file_input", 
-                      label = "Appendix (.pdf format only)", 
-                      accept = c(".pdf")),
+            checkboxInput(inputId = "addfile", 
+                          label = "Add file", 
+                          value = FALSE, 
+                          width = NULL),
+            
+            conditionalPanel(
+                condition = "input.addfile == true",
+                fileInput(inputId = "file_input", 
+                          label = "Appendix (.pdf format only)", 
+                          accept = c(".pdf"))
+            ),
             
             actionButton(inputId = "submit", 
                          label = ("Add"),
@@ -90,7 +98,6 @@ server <- function(input, output, session) {
     output$tbl <- DT::renderDataTable({
         
         outp <- dbGetQuery(pool, "SELECT * from MSInstruments")
-        return(outp)
         
     })
     # Skriver data till databasen MSInstruments
@@ -102,6 +109,7 @@ server <- function(input, output, session) {
                          "Event"= input$event,
                          "Action"= input$solution,
                          "Appendix" = input$file_input$name)
+        #Problem att Appendix måste läggas till jämnt för att kunna skapa df. Appendix får ej vara blank :(
         
         # Tagit bort fileinput här. Nu funkar appen som uppdaterar databasen med övriga data.
         dbWriteTable(pool, "MSInstruments", df, append = TRUE)
