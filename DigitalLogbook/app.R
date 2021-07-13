@@ -86,6 +86,7 @@ ui <- fluidPage(
                          icon = icon('plus'),
                          width = '100%')
         )),
+    #Kopplat till att se ev. uppladdad PDF som ej ännu fungerar.
     mainPanel(uiOutput("pdfview"),
               tabsetPanel(
                   tabPanel(DT::dataTableOutput("tbl"))
@@ -97,9 +98,16 @@ server <- function(input, output, session) {
     
     output$tbl <- DT::renderDataTable({
         
+        #Hämtar hela SQL-databasen med pool connection
         outp <- dbGetQuery(pool, "SELECT * from MSInstruments")
+        
+        #Gör directory xxx tillgängligt
         addResourcePath("pdf", "H:/R/Projects/test")
+        
+        #Skapar hyperlänkar i DT för kolumnen "Appendix"
         outp$Appendix <- paste0("<a href=pdf/",outp$Appendix ,">",outp$Appendix,"</a>")
+        
+        #Säkerställer att DT läser htmlkoden ovan
         datatable(outp, escape = FALSE)
         # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
         
@@ -107,13 +115,18 @@ server <- function(input, output, session) {
     # Skriver data till databasen MSInstruments
     # Adderar all inputdata till dataframe.
     observeEvent(input$submit,{pool
+        
+        #Skapar df1 från input i GUI.
         df1 <- data.frame("Date" = input$date,
                                   "HSAId" = input$ID,
                                   "Instrument" = input$instr,
                                   "Event"= input$event,
-                                  "Action"= input$solution)
+                                 "Action"= input$solution)
+        
+        #Skriver df1 till SQL-databasen
         dbWriteTable(pool, "MSInstruments", df1, append = TRUE)
         
+        #Aktiverar skapandet av df2 ifall checkboxen addfile är checkad.
         if(input$addfile) {
             df2 <- data.frame("Date" = input$date,
                          "HSAId" = input$ID,
@@ -121,9 +134,7 @@ server <- function(input, output, session) {
                          "Event"= input$event,
                          "Action"= input$solution,
                          "Appendix" = input$file_input$name)
-        #Problem att Appendix måste läggas till jämnt för att kunna skapa df. Appendix får ej vara blank :(
-        
-        # Tagit bort fileinput här. Nu funkar appen som uppdaterar databasen med övriga data.
+        #Skriver df2 till SQL-databasen.
         dbWriteTable(pool, "MSInstruments", df2, append = TRUE)
             
         }
@@ -132,10 +143,13 @@ server <- function(input, output, session) {
     
     observe({
         req(input$file_input)
+        
+        #Kopierar pdf-filen från c:/temp till destDir som definierats utanför appen.
         file.copy(input$file_input$datapath,
                    file.path(destDir, input$file_input$name),
                   overwrite = F)
         
+        #Fungerar ej ännu att visa den uppladdade PDFen!
         output$pdfview <- renderUI({
             tags$iframe(style = "height:600px; width:100%; scrolling = yes", src = "0.pdf")
         })
