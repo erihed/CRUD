@@ -98,12 +98,24 @@ server <- function(input, output, session) {
     output$tbl <- DT::renderDataTable({
         
         outp <- dbGetQuery(pool, "SELECT * from MSInstruments")
+        addResourcePath("pdf", "H:/R/Projects/test")
+        outp$Appendix <- paste0("<a href=pdf/",outp$Appendix ,">",outp$Appendix,"</a>")
+        datatable(outp, escape = FALSE)
+        # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
         
     })
     # Skriver data till databasen MSInstruments
     # Adderar all inputdata till dataframe.
     observeEvent(input$submit,{pool
-        df <- data.frame("Date" = input$date,
+        df1 <- data.frame("Date" = input$date,
+                                  "HSAId" = input$ID,
+                                  "Instrument" = input$instr,
+                                  "Event"= input$event,
+                                  "Action"= input$solution)
+        dbWriteTable(pool, "MSInstruments", df1, append = TRUE)
+        
+        if(input$addfile) {
+            df2 <- data.frame("Date" = input$date,
                          "HSAId" = input$ID,
                          "Instrument" = input$instr,
                          "Event"= input$event,
@@ -112,7 +124,10 @@ server <- function(input, output, session) {
         #Problem att Appendix måste läggas till jämnt för att kunna skapa df. Appendix får ej vara blank :(
         
         # Tagit bort fileinput här. Nu funkar appen som uppdaterar databasen med övriga data.
-        dbWriteTable(pool, "MSInstruments", df, append = TRUE)
+        dbWriteTable(pool, "MSInstruments", df2, append = TRUE)
+            
+        }
+        
     })
     
     observe({
