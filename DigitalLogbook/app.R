@@ -10,6 +10,7 @@ library(DT)
 library(ggplot2)
 library(dplyr)
 library(plotly)
+library(tidyverse)
 
 #Database connection with pool!
 pool <- dbPool(
@@ -25,6 +26,7 @@ onStop(function() {
 
 #Testing pool! Visar även om scriptet skriver till MSInstruments eller inte.
 pool %>% tbl("MSInstruments") %>% head(15)
+destDir <- "H:\\R\\Projects\\test"
 
 ui <- fluidPage(
     setBackgroundColor(
@@ -98,7 +100,8 @@ server <- function(input, output, session) {
                          "HSAId" = input$ID,
                          "Instrument" = input$instr,
                          "Event"= input$event,
-                         "Action"= input$solution)
+                         "Action"= input$solution,
+                         "Appendix" = input$file_input$name)
         
         # Tagit bort fileinput här. Nu funkar appen som uppdaterar databasen med övriga data.
         dbWriteTable(pool, "MSInstruments", df, append = TRUE)
@@ -106,11 +109,12 @@ server <- function(input, output, session) {
     
     observe({
         req(input$file_input)
-        file.copy(from = input$file_input$datapath,
-                  to = "www", overwrite = F)
+        file.copy(input$file_input$datapath,
+                   file.path(destDir, input$file_input$name),
+                  overwrite = F)
         
         output$pdfview <- renderUI({
-            tags$iframe(style="height:600px; width:100%; scrolling=yes", src="0.pdf")
+            tags$iframe(style = "height:600px; width:100%; scrolling = yes", src = "0.pdf")
         })
         
     })
