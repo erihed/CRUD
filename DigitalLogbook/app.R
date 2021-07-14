@@ -34,11 +34,12 @@ ui <- fluidPage(
         gradient = "linear",
         direction = "bottom"),
     
-    sidebarLayout(
+    
         
         # Application title
         titlePanel("Digital Instrument logbook"),
-        sidebarPanel(
+        sidebarLayout(
+            sidebarPanel(
             dateInput(inputId = "date",
                       label = "Date",
                       weekstart = 1),
@@ -85,14 +86,14 @@ ui <- fluidPage(
                          style = "color: #fff;",
                          icon = icon('plus'),
                          width = '100%')
-        )),
+        ),
     #Kopplat till att se ev. uppladdad PDF som ej ännu fungerar.
-    mainPanel(uiOutput("pdfview"),
+        mainPanel(uiOutput("pdfview"),
               tabsetPanel(
                   tabPanel(DT::dataTableOutput("tbl"))
               )
     )
-)
+))
 
 server <- function(input, output, session) {
     
@@ -108,7 +109,11 @@ server <- function(input, output, session) {
         outp$Appendix <- paste0("<a href=pdf/",outp$Appendix ,">",outp$Appendix,"</a>")
         
         #Säkerställer att DT läser htmlkoden ovan
-        datatable(outp, escape = FALSE)
+        datatable(outp, 
+                  class = 'cell-border stripe',
+                  callback = JS('table.page("last").draw(false);'),
+                  escape = FALSE) 
+                  
         # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
         
     })
@@ -117,6 +122,7 @@ server <- function(input, output, session) {
     observeEvent(input$submit,{pool
         
         #Skapar df1 från input i GUI.
+        if(input$addfile == FALSE) {
         df1 <- data.frame("Date" = input$date,
                                   "HSAId" = input$ID,
                                   "Instrument" = input$instr,
@@ -124,10 +130,10 @@ server <- function(input, output, session) {
                                  "Action"= input$solution)
         
         #Skriver df1 till SQL-databasen
-        dbWriteTable(pool, "MSInstruments", df1, append = TRUE)
+        dbWriteTable(pool, "MSInstruments", df1, append = TRUE)}
         
         #Aktiverar skapandet av df2 ifall checkboxen addfile är checkad.
-        if(input$addfile) {
+        if(input$addfile == TRUE) {
             df2 <- data.frame("Date" = input$date,
                          "HSAId" = input$ID,
                          "Instrument" = input$instr,
@@ -138,7 +144,26 @@ server <- function(input, output, session) {
         dbWriteTable(pool, "MSInstruments", df2, append = TRUE)
             
         }
-        
+        output$tbl <- DT::renderDataTable({
+            
+            #Hämtar hela SQL-databasen med pool connection
+            outp <- dbGetQuery(pool, "SELECT * from MSInstruments")
+            
+            #Gör directory xxx tillgängligt
+            addResourcePath("pdf", "H:/R/Projects/test")
+            
+            #Skapar hyperlänkar i DT för kolumnen "Appendix"
+            outp$Appendix <- paste0("<a href=pdf/",outp$Appendix ,">",outp$Appendix,"</a>")
+            
+            #Säkerställer att DT läser htmlkoden ovan
+            datatable(outp, 
+                      class = 'cell-border stripe',
+                      callback = JS('table.page("last").draw(false);'),
+                      escape = FALSE) 
+            
+            # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
+            
+        })    
     })
     
     observe({
