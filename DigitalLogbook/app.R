@@ -11,6 +11,7 @@ library(ggplot2)
 library(dplyr)
 library(plotly)
 library(tidyverse)
+library(validate)
 
 #Database connection with pool!
 pool <- dbPool(
@@ -81,7 +82,7 @@ ui <- fluidPage(
             ),
             
             actionButton(inputId = "submit", 
-                         label = ("Add"),
+                         label = ("Send"),
                          class = "btn-success",
                          style = "color: #fff;",
                          icon = icon('plus'),
@@ -119,21 +120,29 @@ server <- function(input, output, session) {
     })
     # Skriver data till databasen MSInstruments
     # Adderar all inputdata till dataframe.
+    
     observeEvent(input$submit,{pool
+        validate(need(input$instr, "Please choose an instrument!"))
+        
         
         #Skapar df1 från input i GUI.
+        
+        
         if(input$addfile == FALSE) {
+        
         df1 <- data.frame("Date" = input$date,
                                   "HSAId" = input$ID,
                                   "Instrument" = input$instr,
-                                  "Event"= input$event,
-                                 "Action"= input$solution)
+                                  "Event" = input$event,
+                                 "Action" = input$solution,
+                            "Appendix" = "NA")
         
         #Skriver df1 till SQL-databasen
         dbWriteTable(pool, "MSInstruments", df1, append = TRUE)}
         
         #Aktiverar skapandet av df2 ifall checkboxen addfile är checkad.
         if(input$addfile == TRUE) {
+        
             df2 <- data.frame("Date" = input$date,
                          "HSAId" = input$ID,
                          "Instrument" = input$instr,
