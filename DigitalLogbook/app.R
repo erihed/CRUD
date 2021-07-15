@@ -12,6 +12,7 @@ library(dplyr)
 library(plotly)
 library(tidyverse)
 library(validate)
+library(shinyFeedback)
 
 #Database connection with pool!
 pool <- dbPool(
@@ -30,6 +31,15 @@ pool %>% tbl("MSInstruments") %>% head(15)
 destDir <- "H:\\R\\Projects\\test"
 
 ui <- fluidPage(
+    tags$head(
+        tags$style(HTML("
+      .shiny-output-error-validation {
+        color: #ff0000;
+        font-weight: bold;
+      }
+    "))
+    ),
+    shinyFeedback::useShinyFeedback(),
     setBackgroundColor(
         color = c("#68c2ff", "#2171B5"),
         gradient = "linear",
@@ -89,15 +99,18 @@ ui <- fluidPage(
                          width = '100%')
         ),
     #Kopplat till att se ev. uppladdad PDF som ej ännu fungerar.
-        mainPanel(uiOutput("pdfview"),
+        mainPanel(
               tabsetPanel(
-                  tabPanel(DT::dataTableOutput("tbl"))
+                  tabPanel("LogBookTable", DT::dataTableOutput("tbl")),
+                  tabPanel("File Preview", uiOutput("pdfview"),
+                  tabPanel("Analysis", plotOutput("plot"))        
+                    
               )
     )
-))
+)))
 
 server <- function(input, output, session) {
-    
+   
     output$tbl <- DT::renderDataTable({
         
         #Hämtar hela SQL-databasen med pool connection
@@ -122,9 +135,7 @@ server <- function(input, output, session) {
     # Adderar all inputdata till dataframe.
     
     observeEvent(input$submit,{pool
-        validate(need(input$instr, "Please choose an instrument!"))
-        
-        
+        req(input$ID, input$event, input$instr)
         #Skapar df1 från input i GUI.
         
         
@@ -154,6 +165,8 @@ server <- function(input, output, session) {
             
         }
         output$tbl <- DT::renderDataTable({
+            req(input$ID, input$event, input$instr)
+            feedbackWarning("input$ID", show = nchar(input$ID) < 4,"Please add ID!")
             
             #Hämtar hela SQL-databasen med pool connection
             outp <- dbGetQuery(pool, "SELECT * from MSInstruments")
@@ -170,7 +183,7 @@ server <- function(input, output, session) {
                       callback = JS('table.page("last").draw(false);'),
                       escape = FALSE) 
             
-            # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
+            # Obs!! PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
             
         })    
     })
@@ -185,7 +198,7 @@ server <- function(input, output, session) {
         
         #Fungerar ej ännu att visa den uppladdade PDFen!
         output$pdfview <- renderUI({
-            tags$iframe(style = "height:600px; width:100%; scrolling = yes", src = "0.pdf")
+            tags$iframe(style = "height:600px; width:100%; scrolling = yes", src = "Anställningsunderlag_.pdf")
         })
         
     })
