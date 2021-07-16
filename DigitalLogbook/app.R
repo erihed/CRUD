@@ -175,7 +175,8 @@ server <- function(input, output, session) {
             datatable(outp, 
                       class = 'cell-border stripe',
                       callback = JS('table.page("last").draw(false);'),
-                      escape = FALSE) 
+                      escape = FALSE,
+                      style = "bootstrap") 
             
             # Obs!! PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
             
