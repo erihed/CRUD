@@ -76,7 +76,8 @@ ui <- fluidPage(
             conditionalPanel(
                 condition = "input.addfile == true",
                 fileInput(inputId = "file_input", 
-                          label = "Appendix (.pdf format only)", 
+                          label = "Appendix (.pdf format only)",
+                          multiple = TRUE,
                           accept = c(".pdf"))
             ),
             
