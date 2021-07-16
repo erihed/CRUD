@@ -2,7 +2,9 @@
 #GibHub CRUD
 
 library(shiny)
+library(shinythemes)
 library(shinyWidgets)
+library(shinyFeedback)
 library(DBI)
 library(pool)
 library(odbc)
@@ -12,7 +14,6 @@ library(dplyr)
 library(plotly)
 library(tidyverse)
 library(validate)
-library(shinyFeedback)
 
 #Database connection with pool!
 pool <- dbPool(
@@ -31,24 +32,12 @@ pool %>% tbl("MSInstruments") %>% head(15)
 destDir <- "H:\\R\\Projects\\test"
 
 ui <- fluidPage(
-    tags$head(
-        tags$style(HTML("
-      .shiny-output-error-validation {
-        color: #ff0000;
-        font-weight: bold;
-      }
-    "))
-    ),
+    theme = shinytheme("darkly"),
     shinyFeedback::useShinyFeedback(),
-    setBackgroundColor(
-        color = c("#68c2ff", "#2171B5"),
-        gradient = "linear",
-        direction = "bottom"),
     
-    
-        
-        # Application title
-        titlePanel("Digital Instrument logbook"),
+           # Application title
+    titlePanel(
+        h1("Digital Instrument logbook", align = "center")),
         sidebarLayout(
             sidebarPanel(
             dateInput(inputId = "date",
@@ -57,7 +46,7 @@ ui <- fluidPage(
             
             textInput(inputId = "ID",
                       label = "HSAId",
-                      value = "XXXX"),
+                      value = "Your HSAId - 4 digits"),
             
             radioButtons(inputId = "instr",
                          label = "Instrument",
@@ -73,11 +62,11 @@ ui <- fluidPage(
             
             textAreaInput(inputId = "event",
                           label = "Event",
-                          value = "Problem"),
+                          value = "What has happened?"),
             
             textAreaInput(inputId = "solution",
                           label = "Action",
-                          value = "Solution"),
+                          value = "What did you do?"),
             
             checkboxInput(inputId = "addfile", 
                           label = "Add file", 
@@ -126,7 +115,11 @@ server <- function(input, output, session) {
         datatable(outp, 
                   class = 'cell-border stripe',
                   callback = JS('table.page("last").draw(false);'),
-                  escape = FALSE) 
+                  escape = FALSE,
+                  style = "bootstrap")
+            
+            
+                        
                   
         # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
         
