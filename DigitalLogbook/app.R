@@ -191,7 +191,20 @@ server <- function(input, output, session) {
             
             # Obs!! PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
             
-        })    
+        })
+        
+        analysisPlot <- dbGetQuery(pool, "SELECT * from MSInstruments")
+        analysisPlot <- data.frame(analysisPlot)
+        
+        output$plot1 <- renderPlot({
+            ggplot(data = analysisPlot, aes(x = Instrument)) +
+                geom_histogram(stat = "count", fill = "#06ff8f")
+        })
+        output$plot2 <- renderPlot({
+            ggplot(data = analysisPlot, aes(x = HSAId)) +
+                geom_histogram(stat = "count", fill = "#06ff8f")    
+            
+        })
     })
     
     observe({
