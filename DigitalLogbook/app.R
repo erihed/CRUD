@@ -5,6 +5,7 @@ library(shiny)
 library(shinythemes)
 library(shinyWidgets)
 library(shinyFeedback)
+library(thematic)
 library(DBI)
 library(pool)
 library(odbc)
@@ -92,12 +93,12 @@ ui <- fluidPage(
         mainPanel(
               tabsetPanel(
                   tabPanel("LogBookTable", DT::dataTableOutput("tbl")),
-                  tabPanel("File Preview", uiOutput("pdfview"),
-                  tabPanel("Analysis", plotOutput("plot"))        
+                  tabPanel("Analysis", plotOutput("plot1"), plotOutput("plot2"), plotOutput("plot3")),
+                  tabPanel("File Preview", uiOutput("pdfview"))        
                     
               )
     )
-)))
+))
 
 server <- function(input, output, session) {
    
@@ -118,15 +119,25 @@ server <- function(input, output, session) {
                   callback = JS('table.page("last").draw(false);'),
                   escape = FALSE,
                   style = "bootstrap")
-            
-            
-                        
-                  
+        
         # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
         
     })
     # Skriver data till databasen MSInstruments
     # Adderar all inputdata till dataframe.
+    
+    analysisPlot <- dbGetQuery(pool, "SELECT * from MSInstruments")
+    analysisPlot <- data.frame(analysisPlot)
+    
+    output$plot1 <- renderPlot({
+        ggplot(data = analysisPlot, aes(x = Instrument)) +
+            geom_histogram(stat = "count", fill = "#06ff8f")
+    })
+    output$plot2 <- renderPlot({
+        ggplot(data = analysisPlot, aes(x = HSAId)) +
+            geom_histogram(stat = "count", fill = "#06ff8f")    
+        
+    })
     
     observeEvent(input$submit,{pool
         req(input$ID, input$event, input$instr)
@@ -198,7 +209,7 @@ server <- function(input, output, session) {
         
     })
 }
-
+thematic_shiny()
 shinyApp(ui, server) 
 
 # dbExecute(pool, "DELETE FROM MSInstruments") för att tömma MSInstruments
