@@ -47,9 +47,9 @@ ui <- fluidPage(
             
             textInput(inputId = "ID",
                       label = "HSAId",
-                      value = "Your HSAId - 4 digits"),
+                      value = ""),
             
-            radioButtons(inputId = "instr",
+            prettyRadioButtons(inputId = "instr",
                          label = "Instrument",
                          choices = c("Asterix",
                                      "Obelix", 
@@ -59,7 +59,11 @@ ui <- fluidPage(
                                      "Fido", 
                                      "Mymlan", 
                                      "Too-Ticki"),
+                         icon = icon("check"),
+                         status = "success",
+                         bigger = TRUE,
                          selected = character(0)),
+            
             
             textAreaInput(inputId = "event",
                           label = "Event",
@@ -70,9 +74,10 @@ ui <- fluidPage(
                           value = "What did you do?"),
             
             checkboxInput(inputId = "addfile", 
-                          label = "Add file", 
+                          label = "Add file (names without spaces!)", 
                           value = FALSE, 
                           width = NULL),
+        
             
             conditionalPanel(
                 condition = "input.addfile == true",
@@ -101,6 +106,22 @@ ui <- fluidPage(
 ))
 
 server <- function(input, output, session) {
+    observeEvent((input$ID), {
+        req(input$ID)
+        if (nchar(input$ID) != 4 ) {
+            showFeedbackDanger(
+                inputId = "ID",
+                text = "wrong number of characters!",
+                color = "#F89406",
+                icon = shiny::icon("exlamationmark", lib = "glyphicon")
+                
+            )
+        } else {
+            hideFeedback("ID")
+        }
+        
+    })
+    
    
     output$tbl <- DT::renderDataTable({
         
@@ -113,12 +134,17 @@ server <- function(input, output, session) {
         #Skapar hyperlänkar i DT för kolumnen "Appendix"
         outp$Appendix <- paste0("<a href=pdf/",outp$Appendix ,">",outp$Appendix,"</a>")
         
+        outp <- outp[order(outp$Date),]
+        
         #Säkerställer att DT läser htmlkoden ovan
-        datatable(outp, 
+       datatable(outp, 
                   class = 'cell-border stripe',
                   callback = JS('table.page("last").draw(false);'),
+                  editable = FALSE, #Lek med denna för att kunna ändra i databasen?
                   escape = FALSE,
                   style = "bootstrap")
+        
+        
         
         # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
         
@@ -141,23 +167,26 @@ server <- function(input, output, session) {
     
     observeEvent(input$submit,{pool
         req(input$ID, input$event, input$instr)
+        req(nchar(input$ID) == 4)
+        
         #Skapar df1 från input i GUI.
         
         
         if(input$addfile == FALSE) {
         
+        
         df1 <- data.frame("Date" = input$date,
                                   "HSAId" = input$ID,
                                   "Instrument" = input$instr,
                                   "Event" = input$event,
-                                 "Action" = input$solution,
-                            "Appendix" = "NA")
+                                  "Action" = input$solution,
+                                  "Appendix" = "NA")
         
         #Skriver df1 till SQL-databasen
         dbWriteTable(pool, "MSInstruments", df1, append = TRUE)}
         
         #Aktiverar skapandet av df2 ifall checkboxen addfile är checkad.
-        if(input$addfile == TRUE) {
+        else {
         
             df2 <- data.frame("Date" = input$date,
                          "HSAId" = input$ID,
@@ -181,6 +210,8 @@ server <- function(input, output, session) {
             
             #Skapar hyperlänkar i DT för kolumnen "Appendix"
             outp$Appendix <- paste0("<a href=pdf/",outp$Appendix ,">",outp$Appendix,"</a>")
+            
+            outp <- outp[order(outp$Date),]
             
             #Säkerställer att DT läser htmlkoden ovan
             datatable(outp, 
