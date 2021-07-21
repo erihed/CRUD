@@ -150,6 +150,7 @@ server <- function(input, output, session) {
                   callback = JS('table.page("last").draw(false);'),
                   editable = FALSE, #Lek med denna för att kunna ändra i databasen?
                   escape = FALSE,
+                  editable = TRUE,
                   style = "bootstrap")
         
         
@@ -226,6 +227,7 @@ server <- function(input, output, session) {
                       class = 'cell-border stripe',
                       callback = JS('table.page("last").draw(false);'),
                       escape = FALSE,
+                      editable = TRUE,
                       style = "bootstrap") 
             
             # Obs!! PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
@@ -260,6 +262,80 @@ server <- function(input, output, session) {
         })
         
     })
+    entry_form <- function(button_id){
+        
+        showModal(
+            modalDialog(
+                div(id=("entry_form"),
+                    tags$head(tags$style(".modal-dialog{ width:400px}")), #Modify the width of the dialog
+                    tags$head(tags$style(HTML(".shiny-split-layout > div {overflow: visible}"))), #Necessary to show the input options
+                    fluidPage(
+                        fluidRow(
+                            splitLayout(
+                                cellWidths = c("250px", "100px"),
+                                cellArgs = list(style = "vertical-align: top"),
+                                dateInput(),
+                                textInput("ID", labelMandatory("HSAId"), placeholder = ""),
+                                textAreaInput("event", "Event"),
+                                textAreaInput("solution", "Action", placeholder = "", height = 100, width = "354px"),
+                                helpText(labelMandatory(""), paste("Mandatory field.")),
+                                actionButton(button_id, "Send")
+                        ),
+                        easyClose = TRUE
+                    )
+                )
+            )
+        )
+        )}
+    formData <- reactive({
+        
+        formData <- data.frame(row_id = UUIDgenerate(),
+                               "Date" = input$date,
+                               "HSAId" = input$ID,
+                               "Instrument" = input$instr,
+                               "Event" = input$event,
+                               "Action" = input$solution,
+                               "Appendix" = "NA")
+        return(formData)
+        dbWriteTable(pool, "MSInstruments", formData, append = TRUE)
+    })
+    observeEvent(input$add_button, priority = 20,{
+        
+        entry_form("submit")
+        
+    })
+    observeEvent(input$submit, priority = 20,{
+        
+        appendData(formData())
+        shinyjs::reset("entry_form")
+        removeModal()
+        
+    })
+    deleteData <- reactive({
+        
+        SQL_df <- dbReadTable(pool, "responses_df")
+        row_selection <- SQL_df[input$responses_table_rows_selected, "row_id"]
+        
+        quary <- lapply(row_selection, function(nr){
+            dbExecute(pool, sprintf('DELETE FROM "responses_df" WHERE "row_id" == ("%s")', nr))
+        })
+    })
+    observeEvent(input$delete_button, priority = 20,{
+        
+        if(length(input$responses_table_rows_selected)>=1 ){
+            deleteData()
+        }
+        
+        showModal(
+            
+            if(length(input$responses_table_rows_selected) < 1 ){
+                modalDialog(
+                    title = "Warning",
+                    paste("Please select row(s)." ),easyClose = TRUE
+                )
+            })
+    })
+    
 }
 thematic_shiny()
 shinyApp(ui, server) 
