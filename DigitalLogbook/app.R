@@ -5,6 +5,7 @@ library(shiny)
 library(shinythemes)
 library(shinyWidgets)
 library(shinyFeedback)
+library(shinyjs)
 library(thematic)
 library(DBI)
 library(pool)
@@ -97,7 +98,14 @@ ui <- fluidPage(
     #Kopplat till att se ev. uppladdad PDF som ej ännu fungerar.
         mainPanel(
               tabsetPanel(
-                  tabPanel("LogBookTable", DT::dataTableOutput("tbl")),
+                  tabPanel("LogBookTable", DT::dataTableOutput("tbl"),
+                           fluidRow(
+                               actionButton("add_button", "Add", icon("plus")),
+                               actionButton("edit_button", "Edit", icon("edit")),
+                               actionButton("copy_button", "Copy", icon("copy")),
+                               actionButton("delete_button", "Delete", icon("trash-alt"))
+                           ),
+                           br(),),
                   tabPanel("Analysis", plotOutput("plot1"), plotOutput("plot2"), plotOutput("plot3")),
                   tabPanel("File Preview", uiOutput("pdfview"))        
                     
