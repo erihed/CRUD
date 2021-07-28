@@ -16,6 +16,7 @@ library(dplyr)
 library(plotly)
 library(tidyverse)
 library(validate)
+library(uuid)
 
 #Database connection with pool!
 pool <- dbPool(
@@ -114,6 +115,20 @@ ui <- fluidPage(
 ))
 
 server <- function(input, output, session) {
+    
+    responses_df <- reactive({
+        
+        #make reactive to
+        input$submit
+        input$submit_edit
+        input$copy_button
+        input$delete_button
+        
+        dbReadTable(pool, "MSInstruments")
+        
+    })  
+    
+    
     observeEvent((input$ID), {
         req(input$ID)
         if (nchar(input$ID) != 4 ) {
@@ -149,11 +164,9 @@ server <- function(input, output, session) {
                   class = 'cell-border stripe',
                   callback = JS('table.page("last").draw(false);'),
                   editable = FALSE, #Lek med denna för att kunna ändra i databasen?
+                  selection = "single",
                   escape = FALSE,
-                  editable = TRUE,
                   style = "bootstrap")
-        
-        
         
         # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
         
@@ -184,12 +197,13 @@ server <- function(input, output, session) {
         if(input$addfile == FALSE) {
         
         
-        df1 <- data.frame("Date" = input$date,
-                                  "HSAId" = input$ID,
-                                  "Instrument" = input$instr,
-                                  "Event" = input$event,
-                                  "Action" = input$solution,
-                                  "Appendix" = "NA")
+        df1 <- data.frame("RowID" = UUIDgenerate(),
+                          "Date" = input$date,
+                          "HSAId" = input$ID,
+                          "Instrument" = input$instr,
+                          "Event" = input$event,
+                          "Action" = input$solution,
+                          "Appendix" = "NA")
         
         #Skriver df1 till SQL-databasen
         dbWriteTable(pool, "MSInstruments", df1, append = TRUE)}
@@ -197,7 +211,8 @@ server <- function(input, output, session) {
         #Aktiverar skapandet av df2 ifall checkboxen addfile är checkad.
         else {
         
-            df2 <- data.frame("Date" = input$date,
+            df2 <- data.frame("RowID" = UUIDgenerate(),
+                         "Date" = input$date,
                          "HSAId" = input$ID,
                          "Instrument" = input$instr,
                          "Event"= input$event,
@@ -227,7 +242,8 @@ server <- function(input, output, session) {
                       class = 'cell-border stripe',
                       callback = JS('table.page("last").draw(false);'),
                       escape = FALSE,
-                      editable = TRUE,
+                      editable = FALSE,
+                      selection = "single",
                       style = "bootstrap") 
             
             # Obs!! PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
@@ -274,12 +290,27 @@ server <- function(input, output, session) {
                             splitLayout(
                                 cellWidths = c("250px", "100px"),
                                 cellArgs = list(style = "vertical-align: top"),
-                                dateInput(),
+                                dateInput("date", "Date"),
                                 textInput("ID", labelMandatory("HSAId"), placeholder = ""),
+                                prettyRadioButtons(inputId = "instr",
+                                                    label = "Instrument",
+                                                    choices = c("Asterix",
+                                                                "Obelix", 
+                                                                "Pluto", 
+                                                                "Langben", 
+                                                                "Mimmi", 
+                                                                "Fido", 
+                                                                "Mymlan", 
+                                                                "Too-Ticki"),
+                                                    icon = icon("check"),
+                                                    status = "success",
+                                                    bigger = TRUE,
+                                                    selected = character(0)),
                                 textAreaInput("event", "Event"),
                                 textAreaInput("solution", "Action", placeholder = "", height = 100, width = "354px"),
                                 helpText(labelMandatory(""), paste("Mandatory field.")),
                                 actionButton(button_id, "Send")
+                                
                         ),
                         easyClose = TRUE
                     )
@@ -289,7 +320,7 @@ server <- function(input, output, session) {
         )}
     formData <- reactive({
         
-        formData <- data.frame(row_id = UUIDgenerate(),
+        formData <- data.frame("RowID" = UUIDgenerate(),
                                "Date" = input$date,
                                "HSAId" = input$ID,
                                "Instrument" = input$instr,
@@ -299,6 +330,12 @@ server <- function(input, output, session) {
         return(formData)
         dbWriteTable(pool, "MSInstruments", formData, append = TRUE)
     })
+    
+    appendData <- function(data){
+        quary <- sqlAppendTable(pool, "MSInstruments", data, row.names = FALSE)
+        dbExecute(pool, quary)
+    }
+    
     observeEvent(input$add_button, priority = 20,{
         
         entry_form("submit")
@@ -313,22 +350,22 @@ server <- function(input, output, session) {
     })
     deleteData <- reactive({
         
-        SQL_df <- dbReadTable(pool, "responses_df")
-        row_selection <- SQL_df[input$responses_table_rows_selected, "row_id"]
+        SQL_df <- dbReadTable(pool, "MSInstruments")
+        row_selection <- SQL_df[input$tbl_rows_selected, "RowID"]
         
         quary <- lapply(row_selection, function(nr){
-            dbExecute(pool, sprintf('DELETE FROM "responses_df" WHERE "row_id" == ("%s")', nr))
+            dbExecute(pool, sprintf('DELETE FROM "MSInstruments" WHERE "RowID" == ("%s")', nr))
         })
     })
     observeEvent(input$delete_button, priority = 20,{
         
-        if(length(input$responses_table_rows_selected)>=1 ){
+        if(length(input$tbl_rows_selected)>=1 ){
             deleteData()
         }
         
         showModal(
             
-            if(length(input$responses_table_rows_selected) < 1 ){
+            if(length(input$tbl_rows_selected) < 1 ){
                 modalDialog(
                     title = "Warning",
                     paste("Please select row(s)." ),easyClose = TRUE
@@ -336,7 +373,109 @@ server <- function(input, output, session) {
             })
     })
     
+    unique_id <- function(data){
+        replicate(nrow(data), UUIDgenerate())
+    }
+    
+    copyData <- reactive({
+        
+        SQL_df <- dbReadTable(pool, "MSInstruments")
+        row_selection <- SQL_df[input$tbl_rows_selected, "RowID"] 
+        SQL_df <- SQL_df %>% filter(RowID %in% row_selection)
+        SQL_df$RowID <- unique_id(SQL_df)
+        
+        quary <- sqlAppendTable(pool, "MSInstruments", SQL_df, row.names = FALSE)
+        dbExecute(pool, quary)
+    })
+    observeEvent(input$copy_button, priority = 20,{
+        
+        if(length(input$tbl_rows_selected)>=1 ){
+            copyData()
+        }
+        
+        showModal(
+            
+            if(length(input$tbl_rows_selected) < 1 ){
+                modalDialog(
+                    title = "Warning",
+                    paste("Please select row(s)." ),easyClose = TRUE
+                )
+            })
+    })
+    observeEvent(input$edit_button, priority = 20,{
+        
+        SQL_df <- dbReadTable(pool, "MSInstruments")
+        
+        showModal(
+            if(length(input$tbl_rows_selected) > 1 ){
+                modalDialog(
+                    title = "Warning",
+                    paste("Please select only one row." ), easyClose = TRUE)
+            } else if(length(input$tbl_rows_selected) < 1){
+                modalDialog(
+                    title = "Warning",
+                    paste("Please select a row NOW!" ), easyClose = TRUE)
+            })  
+        
+        if(length(input$tbl_rows_selected) == 1 ){
+            
+            entry_form("submit_edit")
+            
+            updateDateInput(session, "date", value = SQL_df[input$tbl_rows_selected, "Date"])
+            updateTextInput(session, "ID", value = SQL_df[input$tbl_rows_selected, "HSAId"])
+            updatePrettyRadioButtons(session, "instr", selected = SQL_df[input$tbl_rows_selected, "Instrument"])
+            updateTextAreaInput(session, "event", value = SQL_df[input$tbl_rows_selected, "Event"])
+            updateTextAreaInput(session, "solution", value = SQL_df[input$tbl_rows_selected, "Action"])
+            
+        }
+        
+    })
+    observeEvent(input$submit_edit, priority = 20, {
+        
+        SQL_df <- dbReadTable(pool, "MSInstruments")
+        row_selection <- SQL_df[input$tbl_row_last_clicked, "RowID"] 
+        dbExecute(pool, sprintf('UPDATE "MSInstruments" SET "Date" = ?, "HSAId" = ?, "Event" = ?,
+                          "Action" = ? "Appendix" = ? WHERE "RowID" = ("%s")', row_selection), 
+                  param = list(input$date,
+                               input$ID,
+                               input$instr,
+                               input$event,
+                               input$solution,
+                               input$addfile))
+        removeModal()
+        
+    })
+    output$tbl <- DT::renderDataTable({
+        #Hämtar hela SQL-databasen med pool connection
+        outp <- dbGetQuery(pool, "SELECT * from MSInstruments")
+        
+        #Gör directory xxx tillgängligt
+        addResourcePath("pdf", "H:/R/Projects/test")
+        
+        #Skapar hyperlänkar i DT för kolumnen "Appendix"
+        outp$Appendix <- paste0("<a href=pdf/",outp$Appendix ,">",outp$Appendix,"</a>")
+        
+        outp <- outp[order(outp$Date),]
+        
+        #Säkerställer att DT läser htmlkoden ovan
+        datatable(outp, 
+                  class = 'cell-border stripe',
+                  callback = JS('table.page("last").draw(false);'),
+                  editable = FALSE, #Lek med denna för att kunna ändra i databasen?
+                  selection = "single",
+                  escape = FALSE,
+                  style = "bootstrap")
+        
+        
+        
+        # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
+        
+        
+    })
+    
 }
+
+
 thematic_shiny()
 shinyApp(ui, server) 
 
