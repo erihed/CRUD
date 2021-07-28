@@ -90,7 +90,7 @@ ui <- fluidPage(
             ),
             
             actionButton(inputId = "submit", 
-                         label = ("Send"),
+                         label = "Send",
                          class = "btn-success",
                          style = "color: #fff;",
                          icon = icon('plus'),
@@ -101,10 +101,8 @@ ui <- fluidPage(
               tabsetPanel(
                   tabPanel("LogBookTable", DT::dataTableOutput("tbl"),
                            fluidRow(
-                               actionButton("add_button", "Add", icon("plus")),
-                               actionButton("edit_button", "Edit", icon("edit")),
-                               actionButton("copy_button", "Copy", icon("copy")),
-                               actionButton("delete_button", "Delete", icon("trash-alt"))
+                               actionButton(inputId = "edit_button", label = "Edit", icon("edit")),
+                               actionButton(inputId = "delete_button", label = "Delete", icon("trash-alt"))
                            ),
                            br(),),
                   tabPanel("Analysis", plotOutput("plot1"), plotOutput("plot2"), plotOutput("plot3")),
@@ -119,15 +117,12 @@ server <- function(input, output, session) {
     responses_df <- reactive({
         
         #make reactive to
-        input$submit
-        input$submit_edit
-        input$copy_button
+        input$edit_button
         input$delete_button
         
         dbReadTable(pool, "MSInstruments")
         
     })  
-    
     
     observeEvent((input$ID), {
         req(input$ID)
@@ -145,7 +140,6 @@ server <- function(input, output, session) {
         
     })
     
-   
     output$tbl <- DT::renderDataTable({
         
         #Hämtar hela SQL-databasen med pool connection
@@ -169,7 +163,6 @@ server <- function(input, output, session) {
                   style = "bootstrap")
         
         # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
-        
     })
     # Skriver data till databasen MSInstruments
     # Adderar all inputdata till dataframe.
@@ -280,53 +273,32 @@ server <- function(input, output, session) {
     })
     entry_form <- function(button_id){
         
-        showModal(
-            modalDialog(
-                div(id=("entry_form"),
-                    tags$head(tags$style(".modal-dialog{ width:400px}")), #Modify the width of the dialog
-                    tags$head(tags$style(HTML(".shiny-split-layout > div {overflow: visible}"))), #Necessary to show the input options
-                    fluidPage(
-                        fluidRow(
-                            splitLayout(
-                                cellWidths = c("250px", "100px"),
-                                cellArgs = list(style = "vertical-align: top"),
-                                dateInput("date", "Date"),
-                                textInput("ID", labelMandatory("HSAId"), placeholder = ""),
-                                prettyRadioButtons(inputId = "instr",
-                                                    label = "Instrument",
-                                                    choices = c("Asterix",
-                                                                "Obelix", 
-                                                                "Pluto", 
-                                                                "Langben", 
-                                                                "Mimmi", 
-                                                                "Fido", 
-                                                                "Mymlan", 
-                                                                "Too-Ticki"),
-                                                    icon = icon("check"),
-                                                    status = "success",
-                                                    bigger = TRUE,
-                                                    selected = character(0)),
-                                textAreaInput("event", "Event"),
-                                textAreaInput("solution", "Action", placeholder = "", height = 100, width = "354px"),
-                                helpText(labelMandatory(""), paste("Mandatory field.")),
-                                actionButton(button_id, "Send")
-                                
-                        ),
-                        easyClose = TRUE
-                    )
-                )
-            )
-        )
-        )}
+        showModal(modalDialog(title = "Edit data",
+                              dateInput(paste0("date_add", input$add_button), "Date:", value = input$date),
+                              textInput(paste0("ID_add", input$add_button), "HSAId:"),
+                              radioButtons(paste0("instrument_add", input$add_button), "Instrument:", choices = c("Asterix",
+                                                                                                               "Obelix", 
+                                                                                                               "Pluto", 
+                                                                                                               "Langben", 
+                                                                                                               "Mimmi", 
+                                                                                                               "Fido", 
+                                                                                                               "Mymlan", 
+                                                                                                               "Too-Ticki")),
+                              textAreaInput(paste0("event_add", input$add_button), "Event:"),  
+                              textAreaInput(paste0("solution_add", input$add_button), "Solution:"),
+                              fileInput(paste0("file_add", input$add_button), "Appendix:"), 
+                              actionButton(inputId = "edit_button", label = "Add item"),
+                              easyClose = TRUE, footer = NULL ))
+        }
     formData <- reactive({
         
         formData <- data.frame("RowID" = UUIDgenerate(),
-                               "Date" = input$date,
-                               "HSAId" = input$ID,
-                               "Instrument" = input$instr,
-                               "Event" = input$event,
-                               "Action" = input$solution,
-                               "Appendix" = "NA")
+                               "Date" = input$date_add,
+                               "HSAId" = input$ID_add,
+                               "Instrument" = input$instrument_add,
+                               "Event" = input$event_add,
+                               "Action" = input$solution_add,
+                               "Appendix" = input$file_add)
         return(formData)
         dbWriteTable(pool, "MSInstruments", formData, append = TRUE)
     })
@@ -336,18 +308,6 @@ server <- function(input, output, session) {
         dbExecute(pool, quary)
     }
     
-    observeEvent(input$add_button, priority = 20,{
-        
-        entry_form("submit")
-        
-    })
-    observeEvent(input$submit, priority = 20,{
-        
-        appendData(formData())
-        shinyjs::reset("entry_form")
-        removeModal()
-        
-    })
     deleteData <- reactive({
         
         SQL_df <- dbReadTable(pool, "MSInstruments")
@@ -373,35 +333,6 @@ server <- function(input, output, session) {
             })
     })
     
-    unique_id <- function(data){
-        replicate(nrow(data), UUIDgenerate())
-    }
-    
-    copyData <- reactive({
-        
-        SQL_df <- dbReadTable(pool, "MSInstruments")
-        row_selection <- SQL_df[input$tbl_rows_selected, "RowID"] 
-        SQL_df <- SQL_df %>% filter(RowID %in% row_selection)
-        SQL_df$RowID <- unique_id(SQL_df)
-        
-        quary <- sqlAppendTable(pool, "MSInstruments", SQL_df, row.names = FALSE)
-        dbExecute(pool, quary)
-    })
-    observeEvent(input$copy_button, priority = 20,{
-        
-        if(length(input$tbl_rows_selected)>=1 ){
-            copyData()
-        }
-        
-        showModal(
-            
-            if(length(input$tbl_rows_selected) < 1 ){
-                modalDialog(
-                    title = "Warning",
-                    paste("Please select row(s)." ),easyClose = TRUE
-                )
-            })
-    })
     observeEvent(input$edit_button, priority = 20,{
         
         SQL_df <- dbReadTable(pool, "MSInstruments")
@@ -414,23 +345,23 @@ server <- function(input, output, session) {
             } else if(length(input$tbl_rows_selected) < 1){
                 modalDialog(
                     title = "Warning",
-                    paste("Please select a row NOW!" ), easyClose = TRUE)
+                    paste("Please select a row." ), easyClose = TRUE)
             })  
         
         if(length(input$tbl_rows_selected) == 1 ){
             
-            entry_form("submit_edit")
+            entry_form("edit_button")
             
-            updateDateInput(session, "date", value = SQL_df[input$tbl_rows_selected, "Date"])
-            updateTextInput(session, "ID", value = SQL_df[input$tbl_rows_selected, "HSAId"])
-            updatePrettyRadioButtons(session, "instr", selected = SQL_df[input$tbl_rows_selected, "Instrument"])
-            updateTextAreaInput(session, "event", value = SQL_df[input$tbl_rows_selected, "Event"])
-            updateTextAreaInput(session, "solution", value = SQL_df[input$tbl_rows_selected, "Action"])
+            updateDateInput(session, inputId = "date_add", value = SQL_df[input$tbl_rows_selected, "Date"])
+            updateTextInput(session, inputId = "ID_add", value = SQL_df[input$tbl_rows_selected, "HSAId"])
+            updateRadioButtons(session, inputId = "instrument_add", selected = SQL_df[input$tbl_rows_selected, "Instrument"])
+            updateTextAreaInput(session, inputId = "event_add", value = SQL_df[input$tbl_rows_selected, "Event"])
+            updateTextAreaInput(session, inputId = "solution_add", value = SQL_df[input$tbl_rows_selected, "Action"])
             
         }
         
     })
-    observeEvent(input$submit_edit, priority = 20, {
+    observeEvent(input$submit_edit, priority = 10, {
         
         SQL_df <- dbReadTable(pool, "MSInstruments")
         row_selection <- SQL_df[input$tbl_row_last_clicked, "RowID"] 
@@ -465,16 +396,11 @@ server <- function(input, output, session) {
                   selection = "single",
                   escape = FALSE,
                   style = "bootstrap")
-        
-        
-        
+    
         # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
-        
-        
     })
     
 }
-
 
 thematic_shiny()
 shinyApp(ui, server) 
