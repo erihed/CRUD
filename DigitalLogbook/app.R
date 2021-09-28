@@ -100,10 +100,6 @@ ui <- fluidPage(
         mainPanel(
               tabsetPanel(
                   tabPanel("LogBookTable", DT::dataTableOutput("tbl"),
-                           fluidRow(
-                               actionButton(inputId = "edit_button", label = "Edit", icon("edit")),
-                               actionButton(inputId = "delete_button", label = "Delete", icon("trash-alt"))
-                           ),
                            br(),),
                   tabPanel("Analysis", plotOutput("plot1"), plotOutput("plot2"), plotOutput("plot3")),
                   tabPanel("File Preview", uiOutput("pdfview"))        
@@ -113,16 +109,6 @@ ui <- fluidPage(
 ))
 
 server <- function(input, output, session) {
-    
-    responses_df <- reactive({
-        
-        #make reactive to
-        input$edit_button
-        input$delete_button
-        
-        dbReadTable(pool, "MSInstruments")
-        
-    })  
     
     observeEvent((input$ID), {
         req(input$ID)
@@ -271,111 +257,8 @@ server <- function(input, output, session) {
         })
         
     })
-    entry_form <- function(button_id){
-        
-        showModal(modalDialog(title = "Edit data",
-                              dateInput(paste0("date_add", input$add_button), "Date:", value = input$date),
-                              textInput(paste0("ID_add", input$add_button), "HSAId:"),
-                              radioButtons(paste0("instrument_add", input$add_button), "Instrument:", choices = c("Asterix",
-                                                                                                               "Obelix", 
-                                                                                                               "Pluto", 
-                                                                                                               "Langben", 
-                                                                                                               "Mimmi", 
-                                                                                                               "Fido", 
-                                                                                                               "Mymlan", 
-                                                                                                               "Too-Ticki")),
-                              textAreaInput(paste0("event_add", input$add_button), "Event:"),  
-                              textAreaInput(paste0("solution_add", input$add_button), "Solution:"),
-                              fileInput(paste0("file_add", input$add_button), "Appendix:"), 
-                              actionButton(inputId = "edit_button", label = "Add item"),
-                              easyClose = TRUE, footer = NULL ))
-        }
-    formData <- reactive({
-        
-        formData <- data.frame("RowID" = UUIDgenerate(),
-                               "Date" = input$date_add,
-                               "HSAId" = input$ID_add,
-                               "Instrument" = input$instrument_add,
-                               "Event" = input$event_add,
-                               "Action" = input$solution_add,
-                               "Appendix" = input$file_add)
-        return(formData)
-        dbWriteTable(pool, "MSInstruments", formData, append = TRUE)
-    })
     
-    appendData <- function(data){
-        quary <- sqlAppendTable(pool, "MSInstruments", data, row.names = FALSE)
-        dbExecute(pool, quary)
-    }
     
-    deleteData <- reactive({
-        
-        SQL_df <- dbReadTable(pool, "MSInstruments")
-        row_selection <- SQL_df[input$tbl_rows_selected, "RowID"]
-        
-        quary <- lapply(row_selection, function(nr){
-            dbExecute(pool, sprintf('DELETE FROM "MSInstruments" WHERE "RowID" == ("%s")', nr))
-        })
-    })
-    observeEvent(input$delete_button, priority = 20,{
-        
-        if(length(input$tbl_rows_selected)>=1 ){
-            deleteData()
-        }
-        
-        showModal(
-            
-            if(length(input$tbl_rows_selected) < 1 ){
-                modalDialog(
-                    title = "Warning",
-                    paste("Please select row(s)." ),easyClose = TRUE
-                )
-            })
-    })
-    
-    observeEvent(input$edit_button, priority = 20,{
-        
-        SQL_df <- dbReadTable(pool, "MSInstruments")
-        
-        showModal(
-            if(length(input$tbl_rows_selected) > 1 ){
-                modalDialog(
-                    title = "Warning",
-                    paste("Please select only one row." ), easyClose = TRUE)
-            } else if(length(input$tbl_rows_selected) < 1){
-                modalDialog(
-                    title = "Warning",
-                    paste("Please select a row." ), easyClose = TRUE)
-            })  
-        
-        if(length(input$tbl_rows_selected) == 1 ){
-            
-            entry_form("edit_button")
-            
-            updateDateInput(session, inputId = "date_add", value = SQL_df[input$tbl_rows_selected, "Date"])
-            updateTextInput(session, inputId = "ID_add", value = SQL_df[input$tbl_rows_selected, "HSAId"])
-            updateRadioButtons(session, inputId = "instrument_add", selected = SQL_df[input$tbl_rows_selected, "Instrument"])
-            updateTextAreaInput(session, inputId = "event_add", value = SQL_df[input$tbl_rows_selected, "Event"])
-            updateTextAreaInput(session, inputId = "solution_add", value = SQL_df[input$tbl_rows_selected, "Action"])
-            
-        }
-        
-    })
-    observeEvent(input$submit_edit, priority = 10, {
-        
-        SQL_df <- dbReadTable(pool, "MSInstruments")
-        row_selection <- SQL_df[input$tbl_row_last_clicked, "RowID"] 
-        dbExecute(pool, sprintf('UPDATE "MSInstruments" SET "Date" = ?, "HSAId" = ?, "Event" = ?,
-                          "Action" = ? "Appendix" = ? WHERE "RowID" = ("%s")', row_selection), 
-                  param = list(input$date,
-                               input$ID,
-                               input$instr,
-                               input$event,
-                               input$solution,
-                               input$addfile))
-        removeModal()
-        
-    })
     output$tbl <- DT::renderDataTable({
         #Hämtar hela SQL-databasen med pool connection
         outp <- dbGetQuery(pool, "SELECT * from MSInstruments")
