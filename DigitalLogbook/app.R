@@ -105,7 +105,7 @@ ui <- fluidPage(
                   tabPanel("LogBookTable", DT::dataTableOutput("tbl"),
                            br(),),
                   tabPanel("Analysis", plotOutput("plot1"), plotOutput("plot2"), plotOutput("plot3")),
-                  tabPanel("File Preview", uiOutput("pdfview"))        
+                  tabPanel("Medusa", uiOutput("pdfview"))        
                     
               )
     )
