@@ -83,7 +83,6 @@ ui <- fluidPage(
                           value = FALSE, 
                           width = NULL),
         
-            
             conditionalPanel(
                 condition = "input.addfile == true",
                 fileInput(inputId = "file_input", 
@@ -106,11 +105,9 @@ ui <- fluidPage(
                            br(),),
                   tabPanel("Analysis", plotOutput("plot1"), plotOutput("plot2"), plotOutput("plot3")),
                   tabPanel("Medusa", uiOutput("pdfview"))        
-                    
-              )
+          )
     )
 ))
-
 server <- function(input, output, session) {
     
     observeEvent((input$ID), {
@@ -121,27 +118,19 @@ server <- function(input, output, session) {
                 text = "wrong number of characters!",
                 color = "#F89406",
                 icon = shiny::icon("exlamationmark", lib = "glyphicon")
-                
             )
         } else {
             hideFeedback("ID")
         }
-        
     })
-    
     output$tbl <- DT::renderDataTable({
-        
         #Hämtar hela SQL-databasen med pool connection
         outp <- dbGetQuery(pool, "SELECT * from MSInstruments")
-        
         #Gör directory xxx tillgängligt
         addResourcePath("pdf", "H:/R/Projects/test")
-        
         #Skapar hyperlänkar i DT för kolumnen "Appendix"
         outp$Appendix <- paste0("<a href=pdf/",outp$Appendix ,">",outp$Appendix,"</a>")
-        
         outp <- outp[order(outp$Date),]
-        
         #Säkerställer att DT läser htmlkoden ovan
        datatable(outp, 
                   class = 'cell-border stripe',
@@ -150,15 +139,12 @@ server <- function(input, output, session) {
                   selection = "single",
                   escape = FALSE,
                   style = "bootstrap")
-        
         # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
     })
     # Skriver data till databasen MSInstruments
     # Adderar all inputdata till dataframe.
-    
     analysisPlot <- dbGetQuery(pool, "SELECT * from MSInstruments")
     analysisPlot <- data.frame(analysisPlot)
-    
     output$plot1 <- renderPlot({
         ggplot(data = analysisPlot, aes(x = Instrument)) +
             geom_histogram(stat = "count", fill = "#06ff8f")
@@ -166,19 +152,12 @@ server <- function(input, output, session) {
     output$plot2 <- renderPlot({
         ggplot(data = analysisPlot, aes(x = HSAId)) +
             geom_histogram(stat = "count", fill = "#06ff8f")    
-        
-    })
-    
+     })
     observeEvent(input$submit,{pool
         req(input$ID, input$event, input$instr)
         req(nchar(input$ID) == 4)
-        
         #Skapar df1 från input i GUI.
-        
-        
         if(input$addfile == FALSE) {
-        
-        
         df1 <- data.frame("RowID" = UUIDgenerate(),
                           "Date" = input$date,
                           "HSAId" = input$ID,
@@ -186,13 +165,10 @@ server <- function(input, output, session) {
                           "Event" = input$event,
                           "Action" = input$solution,
                           "Appendix" = "NA")
-        
         #Skriver df1 till SQL-databasen
         dbWriteTable(pool, "MSInstruments", df1, append = TRUE)}
-        
         #Aktiverar skapandet av df2 ifall checkboxen addfile är checkad.
         else {
-        
             df2 <- data.frame("RowID" = UUIDgenerate(),
                          "Date" = input$date,
                          "HSAId" = input$ID,
@@ -202,23 +178,17 @@ server <- function(input, output, session) {
                          "Appendix" = input$file_input$name)
         #Skriver df2 till SQL-databasen.
         dbWriteTable(pool, "MSInstruments", df2, append = TRUE)
-            
         }
         output$tbl <- DT::renderDataTable({
             req(input$ID, input$event, input$instr)
             feedbackWarning("input$ID", show = nchar(input$ID) < 4,"Please add ID!")
-            
             #Hämtar hela SQL-databasen med pool connection
             outp <- dbGetQuery(pool, "SELECT * from MSInstruments")
-            
             #Gör directory xxx tillgängligt
             addResourcePath("pdf", "H:/R/Projects/test")
-            
             #Skapar hyperlänkar i DT för kolumnen "Appendix"
             outp$Appendix <- paste0("<a href=pdf/",outp$Appendix ,">",outp$Appendix,"</a>")
-            
             outp <- outp[order(outp$Date),]
-            
             #Säkerställer att DT läser htmlkoden ovan
             datatable(outp, 
                       class = 'cell-border stripe',
@@ -229,7 +199,6 @@ server <- function(input, output, session) {
                       style = "bootstrap") 
             
             # Obs!! PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
-            
         })
         
         analysisPlot <- dbGetQuery(pool, "SELECT * from MSInstruments")
@@ -242,7 +211,6 @@ server <- function(input, output, session) {
         output$plot2 <- renderPlot({
             ggplot(data = analysisPlot, aes(x = HSAId)) +
                 geom_histogram(stat = "count", fill = "#06ff8f")    
-            
         })
     })
     
@@ -258,9 +226,7 @@ server <- function(input, output, session) {
         output$pdfview <- renderUI({
             tags$iframe(style = "height:600px; width:100%; scrolling = yes", src = "Anställningsunderlag_.pdf")
         })
-        
     })
-    
     
     output$tbl <- DT::renderDataTable({
         #Hämtar hela SQL-databasen med pool connection
@@ -285,7 +251,6 @@ server <- function(input, output, session) {
     
         # Obs PDFer namngivna med mellanslag genererar felmeddelande när hyperlänken klickas!
     })
-    
 }
 
 thematic_shiny()
