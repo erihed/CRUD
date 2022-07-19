@@ -3,11 +3,7 @@ FROM rocker/shiny:latest
 
 # expose port
 EXPOSE 3838
-
-# system libraries of general use
-## install debian packages
-RUN apt-get update -qq && apt-get -y --no-install-recommends install \
-    
+  
 LABEL io.openshift.expose-services="8080:http"
 
 ## update system libraries
