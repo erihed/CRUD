@@ -7,23 +7,7 @@ EXPOSE 3838
 # system libraries of general use
 ## install debian packages
 RUN apt-get update -qq && apt-get -y --no-install-recommends install \
-    libshiny-dev \
-    libshinythemes-dev \
-    libshinyWidgets-dev \
-    libshinyFeedback-dev \
-    libshinyjs-dev \
-    libthematic-dev \
-    unixodbc-dev \
-    libDBI-dev \
-    libodbc-dev \
-    libplotly-dev \
-    libDT-dev \
-    libggplot2-dev \
-    libdplyr-dev \
-    libvalidate-dev \
-    libuuid-dev \
-    libpool-dev
-
+    
 LABEL io.openshift.expose-services="8080:http"
 
 ## update system libraries
