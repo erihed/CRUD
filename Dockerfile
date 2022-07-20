@@ -6,7 +6,7 @@ shinyWidgets \
 shinyFeedback \
 shinyjs \
 thematic \
-unixodbc \
+odbc \
 DBI \
 odbc \
 DT \
