@@ -16,4 +16,4 @@ validate \
 uuid \
 pool \
 plotly
-ADD ./DigitalLogbook/srv/code
+ADD ./DigitalLogbook /srv/code
